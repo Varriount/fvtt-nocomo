@@ -1,0 +1,51 @@
+category
+-------------------------------------------------------------------------------
+import { BlockPlan } from "../plans/block_plan";
+
+/**
+ * Registration function.
+ */
+export function registerBlocks() {
+  Object.values(BLOCKS).forEach(b => b.defineBlock());
+  Object.values(BLOCKS).forEach(b => b.defineToolboxEntry());
+}
+
+/**
+ * Additional value types.
+ */
+declare module "../../plans/block_plan" {
+  export interface ValueTypes {
+    // Add types introduced by this module.
+    "": "";
+  }
+}
+
+/**
+ * Additional toolbox categories.
+ */
+declare module "../../toolbox" {
+  export interface ToolboxCategoryNames {
+    // Add toolbox categories introduced by this module.
+    "{{category}}": "{{category}}";
+  }
+}
+
+/**
+ * Blocks exported by this module.
+ */
+export const BLOCKS: Record<string, BlockPlan> = {};
+
+/**
+ * Common Input Definitions
+ */
+const COMMON_BLOCK_PROPERTIES = {
+  categories: ["{{category}}"],
+};
+
+/**
+ * Helper Function Definitions
+ */
+
+/**
+ * Block Definitions
+ */

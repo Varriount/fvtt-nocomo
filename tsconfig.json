@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "target": "ES2018",
+    "strict": true,
+    "experimentalDecorators": true,
+    "lib": [
+      "ES2018",
+      "dom",
+      "esnext.iterator"
+    ]
+  }
+}
