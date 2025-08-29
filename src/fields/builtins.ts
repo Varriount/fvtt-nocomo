@@ -21,7 +21,7 @@ declare module "../fields" {
   }
 }
 
-export function registerBuiltinFields() {
+export function registerFields() {
   registry.register(registry.Type.FIELD, "checkbox", FieldCheckbox);
   registry.register(registry.Type.FIELD, "dropdown", FieldDropdown);
   registry.register(registry.Type.FIELD, "image", FieldImage);

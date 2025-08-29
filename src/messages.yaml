@@ -1,0 +1,193 @@
+# foundry/dice/modifiers.ts
+dice_modifier_reroll:
+  MESSAGE: >-
+    Reroll any roll that is %{CONDITION} %{CONDITION_VALUE} %{ACTION}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_modifier_explode:
+  MESSAGE: >-
+   Roll an additional die each time a roll is %{CONDITION} %{CONDITION_VALUE}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_modifier_keep_drop:
+  MESSAGE: >-
+    %{ACTION} %{COUNT} rolls.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_modifier_replace:
+  MESSAGE: >-
+    %{ACTION} %{COUNT} rolls.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_modifier_count_sf:
+  MESSAGE: >-
+    Count dice that roll %{CONDITION} %{CONDITION_VALUE} as %{ACTION}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_modifier_description:
+  MESSAGE: >-
+    Add flavor text %{DESCRIPTION}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+
+# foundry/dice/rolls.ts
+dice_roll:
+  MESSAGE: >-
+    Roll %{TERM} using %{DATA}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+
+# foundry/dice/terms.ts
+dice_term_n_sided:
+  MESSAGE: >-
+    Roll %{DICE_COUNT} %{SIDE_COUNT}-sided die.\n
+    Modifiers: %{MODIFIERS}
+    This
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_term_coin:
+  MESSAGE: >-
+    Flip %{COIN_COUNT} coins, counting the number of %{CALLED_RESULT}.\n
+    Modifiers: %{MODIFIERS}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_term_fate:
+  MESSAGE: >-
+    Roll %{DICE_COUNT} fudge die.\n
+    Modifiers: %{MODIFIERS}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_term_variable:
+  MESSAGE: >-
+    Variable %{VARIABLE_NAME}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_term_pool:
+  MESSAGE: >-
+    Roll a group of dice: %{EXPRESSIONS}\n
+    Modifiers: %{MODIFIERS}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+dice_term_parenthetical:
+  MESSAGE: >-
+    ( %{EXPRESSION} )
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+
+# html/input.ts
+#html_button:
+#  MESSAGE: >-
+#
+#  TOOLTIP: >-
+#
+#  HELP_URL: ""
+#
+#html_checkbox:
+#  MESSAGE
+
+
+# javascript/objects
+create_object:
+  MESSAGE: >-
+    { %{PROPERTIES} }
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+create_object_property:
+  MESSAGE: >-
+    %{NAME} : %{VALUE},
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+get_object_property:
+  MESSAGE: >-
+    Get the %{NAME} property's value from %{OBJECT}
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+set_object_property:
+  MESSAGE: >-
+    Set the %{NAME} property's value to %{VALUE} on %{OBJECT}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+delete_object_property:
+  MESSAGE: >-
+    Delete the %{NAME} property from %{OBJECT}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+get_object_property_names:
+  MESSAGE: >-
+    Get a list of property names from %{OBJECT}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+get_object_property_values:
+  MESSAGE: >-
+    Get a list of property values from %{OBJECT}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+get_object_property_entries:
+  MESSAGE: >-
+    Get a list of properties and their values from %{OBJECT}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+
+# javascript/random.ts
+generate_random_number:
+  MESSAGE: >-
+    Generate a random %{NUMBER_KIND} number that is %{MINIMUM_VALUE_OPERATOR} %{MINIMUM} and %{MAXIMUM_VALUE_OPERATOR} %{MAXIMUM}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+sample_list:
+  MESSAGE: >-
+    Select %{SAMPLE_SIZE} random entries from %{LIST} %{REPETITION_MODE}.
+  TOOLTIP: >-
+
+  HELP_URL: ""
+
+shuffle_list:
+  MESSAGE: >-
+    %{COPY_MODE} %{LIST}
+  TOOLTIP: >-
+
+  HELP_URL: ""

@@ -1,5 +1,5 @@
-import { BlockPlan } from "../../plans/block_plan";
 import { valueCode } from "../../codegen";
+import { BlockPlan } from "../../plans/block_plan";
 
 /**
  * Registration function.
@@ -51,7 +51,7 @@ BLOCKS.FILTER = new BlockPlan({
   inputs: [
     {
       name: "filters",
-      type: "statement",
+      kind: "statement",
       accepts: ["FilterExpression[Document]"],
     },
     {
@@ -62,7 +62,7 @@ BLOCKS.FILTER = new BlockPlan({
 
   output: "Array[Document]",
 
-  generator: valueCode(
+  toCode: valueCode(
     `
       {{documents}}.filter(doc => {
         let result = true;
@@ -96,23 +96,25 @@ BLOCKS.FILTER_EXPRESSION = new BlockPlan({
     {
       name: "operator",
       type: "dropdown",
-      value: [
-        ["=", "==="],
-        ["!=", "!=="],
-        [">", ">"],
-        [">=", ">="],
-        ["<", "<"],
-        ["<=", "<="],
-        ["in", "in"],
-        ["not in", "not in"],
-        ["includes", "excludes"],
+      args: [
+        [
+          ["=", "==="],
+          ["!=", "!=="],
+          [">", ">"],
+          [">=", ">="],
+          ["<", "<"],
+          ["<=", "<="],
+          ["in", "in"],
+          ["not in", "not in"],
+          ["includes", "excludes"],
+        ],
       ],
     },
   ],
 
   output: "FilterExpression[Document]",
 
-  generator: valueCode(
+  toCode: valueCode(
     `
       doc => doc[{{property}}] {{operator}} {{value}}
     `,

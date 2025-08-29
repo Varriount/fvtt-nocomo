@@ -1,6 +1,9 @@
-const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const TsMacros = require("ts-macros").default;
+import path from "path";
+import HtmlWebpackPlugin from "html-webpack-plugin";
+import TsMacrosModule from "ts-macros";
+
+// @ts-ignore
+const TsMacros = TsMacrosModule["default"];
 
 // Constants for commonly used values
 const SOURCE_DIR = "src";
@@ -11,7 +14,7 @@ const INDEX_TS_FILENAME = "index.ts";
 const INDEX_HTML_FILENAME = "index.html";
 const OUTPUT_FILENAME = "bundle.js";
 
-const SOURCE_MAP = "eval-cheap-module-source-map";
+const SOURCE_MAP = "eval-source-map";
 
 // Base config that applies to either development or production mode.
 const BASE_CONFIG = {
@@ -19,7 +22,7 @@ const BASE_CONFIG = {
   output: {
     // Compile the source files into a bundle.
     filename: OUTPUT_FILENAME,
-    path: path.resolve(__dirname, DIST_DIR),
+    path: path.resolve("./", DIST_DIR),
     clean: true,
   },
 
@@ -30,19 +33,27 @@ const BASE_CONFIG = {
 
   module: {
     rules: [
+      // Rule for TypeScript files.
       {
-        test: /\.tsx?$/,
+        test: /[.](ts|tsx)$/u,
         loader: "ts-loader",
-        exclude: /node_modules/,
+        exclude: /node_modules/u,
         options: {
-          getCustomTransformers: program => ({
+          getCustomTransformers: (program: any) => ({
             before: [TsMacros(program)],
           }),
         },
       },
+
+      // Rule for YAML files.
       {
-        // Load CSS files. They can be imported into JS files.
-        test: /\.css$/i,
+        test: /[.](yaml|yml)$/u,
+        use: "yaml-loader",
+      },
+
+      {
+        // Rule for CSS files.
+        test: /[.]css$/u,
         use: ["style-loader", "css-loader"],
       },
     ],
@@ -67,17 +78,17 @@ const DEV_CONFIG = {
   ...BASE_CONFIG,
 
   devtool: SOURCE_MAP,
-  ignoreWarnings: [/Failed to parse source map.*blockly/],
+  ignoreWarnings: [/Failed to parse source map.*blockly/u],
   output: {
     ...BASE_CONFIG.output,
-    path: path.resolve(__dirname, BUILD_DIR),
+    path: path.resolve("./", BUILD_DIR),
   },
   module: {
     ...BASE_CONFIG.module,
     rules: [
       ...BASE_CONFIG.module.rules,
       {
-        test: /\.js$/,
+        test: /\.js$/u,
         enforce: "pre",
         use: ["source-map-loader"],
       },
@@ -85,9 +96,7 @@ const DEV_CONFIG = {
   },
 };
 
-module.exports = (env, argv) => {
-  let result = {};
-
+export default (env: any, argv: { mode: string }) => {
   if (argv.mode === "development") {
     return DEV_CONFIG;
   } else {

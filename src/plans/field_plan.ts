@@ -1,40 +1,27 @@
 /**
  *
  */
-import { FieldType, FieldTypes } from "../fields";
-import { Block, Field, registry } from "blockly";
+import { Block, Field, registry } from "blockly/core";
 import { RegistrableField } from "blockly/core/field_registry";
+import { FieldType, FieldTypes } from "../fields";
 
 export type FieldPlanData = {
   name: string;
+  default?: unknown;
 } & FieldType;
 
 export class FieldPlan {
   name: string;
   type: keyof FieldTypes;
-  value: unknown;
-  options: unknown;
+  args: unknown[];
+  default: unknown;
 
   constructor(data: FieldPlanData) {
     this.name = data.name;
     this.type = data.type;
 
-    this.value = data.value;
-
-    const options: Record<string, unknown> = {};
-    Object.assign(options, data);
-
-    if (options.value != null) {
-      delete options.value;
-    }
-    if (options.name != null) {
-      delete options.name;
-    }
-    if (options.type != null) {
-      delete options.type;
-    }
-
-    this.options = options;
+    this.args = data.args;
+    this.default = data.default;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -43,7 +30,7 @@ export class FieldPlan {
     const fieldClassName = this.type;
     const throwIfMissing = true;
 
-    const fieldClass =
+    const fieldClassMaybe =
       registry.getObject<RegistrableField>(classType, fieldClassName, false) ??
       registry.getObject<RegistrableField>(
         classType,
@@ -51,18 +38,13 @@ export class FieldPlan {
         throwIfMissing,
       );
 
-    // @ts-expect-error `fieldClass` will never be null due to `throwIfMissing`.
-    const result = new fieldClass(this.value, null, this.options);
+    const fieldClass = fieldClassMaybe as RegistrableField;
+    const result = new fieldClass(...this.args);
+    result.setValue(this.default);
 
     // Normally the `name` field is set by `Input.appendField`, but we set it
     // here instead.
     result.name = this.name;
     return result;
-  }
-}
-
-export class LabelFieldPlan extends FieldPlan {
-  constructor(text: string) {
-    super({ name: text, type: "label", value: text });
   }
 }

@@ -10,13 +10,13 @@
  * ```
  */
 import { ToolboxInfo } from "blockly/core/utils/toolbox";
+import { functionsCategory } from "./toolbox/functions";
+import { listsCategory } from "./toolbox/lists";
 import { logicCategory } from "./toolbox/logic";
 import { loopsCategory } from "./toolbox/loops";
 import { mathCategory } from "./toolbox/math";
 import { textCategory } from "./toolbox/text";
-import { listsCategory } from "./toolbox/lists";
 import { variablesCategory } from "./toolbox/variables";
-import { functionsCategory } from "./toolbox/functions";
 
 /**
  * Default Input Types
@@ -46,6 +46,6 @@ export const toolbox: ToolboxInfo = {
   ],
 };
 
-// class ToolboxPlan {
+// Class ToolboxPlan {
 //   category_map: Map<string, Toolbox>;
 // }

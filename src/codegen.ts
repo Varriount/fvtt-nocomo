@@ -1,4 +1,4 @@
-import { Block } from "blockly";
+import { Block } from "blockly/core";
 import { JavascriptGenerator, Order } from "blockly/javascript";
 import * as OriginalHandlebars from "handlebars";
 

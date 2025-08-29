@@ -183,7 +183,7 @@ export const textCategory: ToolboxItemInfo = {
     //   type: 'add_text',
     //   parameters: {
     //     TEXT: {
-    //       default: {
+    //       defaultValue: {
     //         type: 'text',
     //         fields: {
     //           TEXT: 'abc',

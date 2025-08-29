@@ -1,41 +1,46 @@
-import { Block, Blocks } from "blockly";
-import { JavascriptGenerator, javascriptGenerator } from "blockly/javascript";
-import { colourFromString } from "../utils";
-import { toolbox, ToolboxCategoryName } from "../toolbox";
-import { BlockInfo } from "blockly/core/utils/toolbox";
+import { Block, Blocks, Field, FieldLabel, Input } from "blockly/core";
 import { ConnectionState, State } from "blockly/core/serialization/blocks";
-import { BlockDefinition } from "blockly/core/blocks";
-import {
-  BlockVariantBranchPlan,
-  BlockVariantBranchPlanData,
-  BlockVariantLeaf,
-  BlockVariantLeafPlan,
-  BlockVariantLeafPlanData,
-  BlockVariantPlan,
-} from "./block_variant_plan";
-import { InputPlanData } from "./input_plan";
-import { FieldPlanData } from "./field_plan";
+import { BlockInfo } from "blockly/core/utils/toolbox";
+import { JavascriptGenerator, javascriptGenerator } from "blockly/javascript";
+import { stmtCode, valueCode } from "../codegen";
+import { localize } from "../localization";
+import { toolbox, ToolboxCategoryName } from "../toolbox";
+import { colourViaStringHash, isString, tokenizeMessage } from "../utils";
 import { CodeGenerationFunction } from "./code_plan";
-import { OutputPlanData } from "./output_plan";
-import { SetColourStep } from "./block_plan_steps/set_colour_step";
+import { FieldPlan, FieldPlanData } from "./field_plan";
+import {
+  createDummyInput,
+  InputPlan,
+  InputPlanData,
+  ShadowInputValue,
+} from "./input_plan";
+import { OutputPlan, OutputPlanData } from "./output_plan";
 
 /**
- * Represents kinds of blocks that can be created.
- *   'value':
+ * Localization Keys
+ * =================
+ *
+ * {{block_name}}.MESSAGE
+ * {{block_name}}.HORIZONTAL_MESSAGE
+ * {{block_name}}.VERTICAL_MESSAGE
+ * {{block_name}}.COLLAPSED_MESSAGE
+ */
+
+/**
+ * Represents the semantic construct that a block represents.
+ *   "value":
  *       A value block (a block that returns a value).
- *   'statement':
- *       A statement block (a block that does not return a value, and can be
- *       placed.
- *   'value_and_statement':
- *       Represents a block that acts as both a value and a
- * statement.
+ *   "statement":
+ *       A statement block (a block that doesn't return a value).
+ *   "value_and_statement":
+ *       Represents a block that acts as both a value and a statement.
  */
 export type BlockKind = "value" | "statement" | "value_and_statement";
 
 /**
  * Represents the possible orientations of a block.
- * 'horizontal' - Blocks are laid out horizontally.
- * 'vertical' - Blocks are laid out vertically.
+ *   "horizontal": Blocks are laid out horizontally.
+ *   "vertical": Blocks are laid out vertically.
  */
 export type BlockOrientation = "horizontal" | "vertical";
 
@@ -77,110 +82,122 @@ export type BlockPlanData = {
 
   /**
    * Data describing the values this variant outputs.
-   * Inherited by child variants.
    */
   output?: OutputPlanData | string;
   outputs?: string[];
 
   /**
-   * A function to generate code for this variant.
-   * Inherited by child variants.
+   * A function or string to generate code from.
    */
-  generator?: CodeGenerationFunction;
+  toCode?: CodeGenerationFunction | string;
 
   /**
-   * The possible variations of this block.
+   * Lifecycle hook that is run whenever an instance of this block is
+   * constructed.
    */
-  variants?: (BlockVariantBranchPlanData | BlockVariantLeafPlanData)[];
+  onCreate?: (this: Block) => void;
+
+  /**
+   * Lifecycle hook that is run whenever the workspace is updated.
+   */
+  onWorkspaceUpdate?: (this: Block, event: any) => void;
 
   // Temporary fields
   colour?: number;
-  // message: string;
 };
 
-export abstract class BlockPlanStep {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(data: BlockPlanData) {}
-  abstract initializeBlock(block: Block): void;
+class __BPBlock extends Block {
+  generator?: CodeGenerationFunction;
 }
 
 /*****************************************************************************/
 /*****************************************************************************/
 /*****************************************************************************/
 
-export const BLOCK_PLAN_STEP_CLASSES = [SetColourStep];
-
+// TODO Allow various properties to be functions, called when appropriate.
+// TODO Fix handling of fields where defaultValue is not serialized value.
 export class BlockPlan {
   name: string;
   kind: BlockKind;
   orientation?: BlockOrientation;
   categories: ToolboxCategoryName[];
 
-  variants: BlockVariantPlan;
-  steps: BlockPlanStep[];
+  inputs: Map<string, InputPlan>;
+  fields: Map<string, FieldPlan>;
+  output?: OutputPlan;
+  colour: number | string;
+
+  toCode?: CodeGenerationFunction;
+
+  onCreate?: (this: Block) => void;
+  onWorkspaceUpdate?: (this: Block, event: any) => void;
+
+  message: string | null;
+  tooltip: string | null;
+  helpURL: string | null;
 
   constructor(data: BlockPlanData) {
-    this.steps = BLOCK_PLAN_STEP_CLASSES.map(clazz => new clazz(data));
-
-    // TODO: Smart orientation selection based on input count.
     this.name = data.name;
     this.kind = data.kind;
     this.orientation = data.orientation ?? "horizontal";
     this.categories = data.categories ?? [];
+    this.colour = data.colour ?? colourViaStringHash(this.name);
+    this.toCode = isString(data.toCode)
+      ? this.kind === "value"
+        ? valueCode(data.toCode)
+        : stmtCode(data.toCode)
+      : data.toCode;
 
-    // Synthesize a variant root
-    if (data.variants == null || data.variants.length === 0) {
-      this.variants = new BlockVariantLeafPlan({
-        name: this.name,
-        inputs: data.inputs,
-        fields: data.fields,
-        output: data.output,
-        outputs: data.outputs,
-        generator: data.generator,
-      });
-    } else {
-      this.variants = new BlockVariantBranchPlan({
-        name: this.name,
-        inputs: data.inputs,
-        fields: data.fields,
-        output: data.output,
-        outputs: data.outputs,
-        generator: data.generator,
-        variants: data.variants,
-      });
+    this.message = localize(`${this.name}.MESSAGE`);
+    this.tooltip = localize(`${this.name}.TOOLTIP`);
+    this.helpURL = localize(`${this.name}.HELP_URL`);
+
+    this.onCreate = data.onCreate;
+    this.onWorkspaceUpdate = data.onWorkspaceUpdate;
+
+    // Extract and normalize the variant's output information.
+    this.output = new OutputPlan(data.output);
+
+    // Create proper maps from the field and input lists.
+    this.inputs = new Map();
+    if (data.inputs) {
+      for (const inputData of data.inputs) {
+        this.inputs.set(inputData.name, new InputPlan(inputData));
+      }
+    }
+
+    this.fields = new Map();
+    if (data.fields) {
+      for (const fieldData of data.fields) {
+        this.fields.set(fieldData.name, new FieldPlan(fieldData));
+      }
     }
   }
 
   defineBlock() {
-    Blocks[this.name] = this.generateBlockDefinition();
-    javascriptGenerator.forBlock[this.name] = (
-      block: Block,
-      generator: JavascriptGenerator,
-    ) => {
-      // @ts-expect-error TODO
-      console.log(block.generator);
-      // @ts-expect-error TODO
-      return block.generator(block, generator);
-    };
-  }
-
-  generateBlockDefinition(): BlockDefinition {
+    // Define the block definition used when creating new `Block` instances.
     const blockPlan = this;
-    return {
+    Blocks[this.name] = {
       init(this: Block) {
         blockPlan.initializeBlock(this);
       },
     };
+
+    // Define the code generator used for the new `Block` instances.
+    javascriptGenerator.forBlock[this.name] = function (
+      block: __BPBlock,
+      generator: JavascriptGenerator,
+    ) {
+      const f = block.generator ?? (() => "");
+      return f(block, generator);
+    };
   }
 
-  initializeBlock(block: Block) {
-    for (const step of this.steps) {
-      step.initializeBlock(block);
-    }
-
+  initializeBlock(block: __BPBlock) {
     // Set basic block properties.
     block.setTooltip("");
     block.setHelpUrl("");
+    block.setColour(this.colour);
 
     switch (this.orientation) {
       case "vertical":
@@ -193,33 +210,12 @@ export class BlockPlan {
         break;
     }
 
-    // Create the variant tree to store the block's variation state.
-    const variants = this.variants.constructVariant(block);
-    const leaf = variants.getActiveLeaf();
-    this.configureBlock(block, leaf);
-
-    // Trigger the variant to update the block.
-    // @ts-expect-error TODO
-    block.variants = variants;
-  }
-
-  private configureBlock(block: Block, leaf: BlockVariantLeaf) {
     // Set the block's line of inputs and fields.
-    block.inputList.length = 0;
-
-    for (const [input, fields] of leaf.line) {
-      input.fieldRow.length = 0;
-      for (const field of fields) {
-        // NOTE: `appendField` also sets `field.name`, so `field.name` MUST be
-        // a valid value before this.
-        input.appendField(field, field.name);
-      }
-      block.appendInput(input);
-    }
+    this.setBlockInputsAndFields(block);
 
     // Set the block's output type.
-    const hasOutput = !!leaf.output;
-    const outputTypes = leaf.output?.types;
+    const hasOutput = !!this.output;
+    const outputTypes = this.output?.types;
 
     if (this.kind === "statement") {
       block.setOutput(false);
@@ -232,37 +228,101 @@ export class BlockPlan {
     }
 
     // Set the block's generator
-    // @ts-expect-error TODO
-    block.generator = leaf.generator;
+    block.generator = this.toCode;
+
+    // Attach the onWorkspaceUpdate lifecycle hook
+    if (this.onWorkspaceUpdate) {
+      block.setOnChange(this.onWorkspaceUpdate);
+    }
+
+    // Run the onCreate lifecycle hook
+    if (this.onCreate) {
+      this.onCreate.apply(block);
+    }
   }
-  // setBlockFlowType(block: Block) {
-  //   switch (this.type) {
-  //     // If the block is an value, enable output with the specified output
-  //     // accepts.
-  //     case "value":
-  //       block.setOutput(true, this.output?.types);
-  //       break;
-  //
-  //     // If the block is a statement, set up connections to previous and next
-  //     // statements.
-  //     case "statement":
-  //       block.setPreviousStatement(true);
-  //       block.setNextStatement(true);
-  //       break;
-  //
-  //     // If the block is both an value and statement, enable output and
-  //     // set up statement connections.
-  //     case "value_statement":
-  //       block.setOutput(true, this.output?.types);
-  //       block.setPreviousStatement(true);
-  //       block.setNextStatement(true);
-  //       break;
-  //   }
-  // }
+  private setBlockInputsAndFields(block: Block) {
+    const fieldPlans = this.fields;
+    const inputPlans = this.inputs;
+
+    const inputMap = new Map<string, Input>();
+    for (const [name, plan] of inputPlans) {
+      inputMap.set(name, plan.createInput(block));
+    }
+
+    const fieldMap = new Map<string, Field>();
+    for (const [name, plan] of fieldPlans) {
+      fieldMap.set(name, plan.createField(block));
+    }
+
+    // Buffer for collecting field data that will later be appended to inputs.
+    let fieldBuffer: Field[] = [];
+
+    // Helper function to append all buffered fields to the given input,
+    // attach the input to the block, then clear the buffer.
+    function drainFieldBufferInto(input: Input) {
+      fieldBuffer.forEach(f => input.appendField(f, f.name));
+      fieldBuffer = [];
+    }
+
+    const message = this.message ?? this.synthesizeDefaultMessage();
+    for (const [tokenKind, token] of tokenizeMessage(message)) {
+      switch (tokenKind) {
+        // Turn text outside parameter interpolations into label fields.
+        case "text": {
+          const label = new FieldLabel(token);
+          fieldBuffer.push(label);
+          continue;
+        }
+
+        // Turn newlines into dummy inputs, to simulate line breaks.
+        case "newline": {
+          const input = createDummyInput(block);
+          drainFieldBufferInto(input);
+          block.appendInput(input);
+          continue;
+        }
+
+        // Turn parameter references into either inputs or fields.
+        case "parameterName": {
+          // If the parameter is an input plan, initialize an input from it,
+          // add any buffered fields to it, then append it to the block.
+          const input = inputMap.get(token);
+          if (input != null) {
+            drainFieldBufferInto(input);
+            block.appendInput(input);
+            continue;
+          }
+
+          // If the parameter is a field plan, initialize a field and
+          // add it to the field buffer.
+          const field = fieldMap.get(token);
+          if (field != null) {
+            fieldBuffer.push(field);
+            continue;
+          }
+
+          // Throw an error if neither an input nor a field was found.
+          throw new Error(`No such input or field: ${token}`);
+        }
+
+        default:
+          throw new Error(`Unhandled token kind: ${tokenKind}`);
+      }
+    }
+
+    // If any fields are left in the field buffer, create a DummyInput to
+    // attach them to.
+    if (fieldBuffer.length > 0) {
+      const input = createDummyInput(block);
+      drainFieldBufferInto(input);
+      block.appendInput(input);
+    }
+  }
 
   defineToolboxEntry() {
     // TODO: Move to toolbox class/module
     const toolboxEntry = this.generateToolboxEntry();
+    console.log(289, toolboxEntry);
 
     const remainingNames = new Set<string>(this.categories);
 
@@ -288,68 +348,94 @@ export class BlockPlan {
       }
     }
     for (const name of remainingNames) {
-      console.log("Category hue", colourFromString(name));
       toolbox.contents.push({
         kind: "category",
         name: name,
         contents: [toolboxEntry],
-        colour: colourFromString(name),
+        colour: colourViaStringHash(name),
       });
     }
   }
 
-  generateToolboxEntry(): BlockInfo {
-    // Construct the toolbox entry for the block.
-    let result = this.generateBlockState() as BlockInfo;
-    result ??= {
-      type: this.name,
-      kind: "block",
-    };
-    result.kind = "block";
+  private synthesizeDefaultMessage(): string {
+    const messageParts: string[] = [];
 
-    return result;
+    // Add block name.
+    messageParts.push(`${this.name}\n`);
+
+    // Add fields to the message.
+    for (const [name] of this.fields) {
+      messageParts.push(`  ${name}: %{${name}}\n`);
+    }
+
+    // Add inputs to the message.
+    for (const [name] of this.inputs) {
+      messageParts.push(`  ${name}: %{${name}}`);
+    }
+
+    return messageParts.join("").trim();
   }
 
-  generateBlockState(this: BlockPlan): State | null {
-    // Generate the default state for each of the block's inputs.
-    const inputs: Record<string, ConnectionState> | undefined = undefined;
-
-    // for (const input of this.variants) {
-    //   // Get the primary type of the input's connection.
-    //   const inputTypes = input.accepts;
-    //   if (inputTypes == null || inputTypes.length === 0) {
-    //     continue;
-    //   }
-    //
-    //   // Lookup the block associated with the primary type.
-    //   const inputBlockPlan = getDefaultBlockPlanForType(inputTypes[0]);
-    //   if (inputBlockPlan == null) {
-    //     continue;
-    //   }
-    //
-    //   // Generate the default state for the primary type's default block.
-    //   const inputBlockState = inputBlockPlan.generateBlockState();
-    //   if (inputBlockState == null) {
-    //     continue;
-    //   }
-    //
-    //   // Assign the state for the default block to the input.
-    //   inputs ??= {};
-    //   inputs[input.name] = { shadow: inputBlockState };
-    // }
-
-    // If any default states were generated for fields or inputs, construct
-    // a `State` value from them and return it. Otherwise, return `null`.
-    if (inputs == null) {
-      return null;
-    } else {
-      return {
-        type: this.name,
-        inputs: inputs,
-        fields: {},
-      };
+  /**
+   * Populates a BlockInfo object with fields and inputs from provided sources.
+   */
+  private _buildBlockInfoContents(
+    name: string,
+    fieldSource: any,
+    inputSource: any,
+  ): State {
+    // Handle fields with default values.
+    const fields: Record<string, unknown> = {};
+    for (const fieldPlan of fieldSource) {
+      if (fieldPlan.default !== undefined) {
+        fields[fieldPlan.name] = fieldPlan.default;
+      }
     }
+
+    // Handle inputs with default values (shadow blocks).
+    const inputs: Record<string, ConnectionState> = {};
+    for (const inputPlan of inputSource) {
+      if (inputPlan.shadow) {
+        inputs[inputPlan.name] = this.createShadowBlockInfo(inputPlan.shadow);
+      }
+    }
+
+    return {
+      type: name,
+      fields: fields,
+      inputs: inputs,
+    };
+  }
+
+  /**
+   * Recursively creates a BlockInfo object for a shadow block.
+   * Now simplified to call the helper method.
+   */
+  private createShadowBlockInfo(
+    defaultValue: Omit<ShadowInputValue, "name">,
+  ): ConnectionState {
+    return {
+      shadow: this._buildBlockInfoContents(
+        defaultValue.block,
+        defaultValue.fields || [],
+        defaultValue.inputs || [],
+      ),
+    };
+  }
+
+  /**
+   * Generates a Blockly toolbox entry for the block.
+   * Now simplified to call the helper method.
+   */
+  generateToolboxEntry(): BlockInfo {
+    const x = {
+      kind: "block",
+      ...this._buildBlockInfoContents(
+        this.name,
+        this.fields.values(),
+        this.inputs.values(),
+      ),
+    };
+    return x;
   }
 }
-
-export const BLOCK_PLAN_TYPE_MAP = new Map<string, BlockPlan>();

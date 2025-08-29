@@ -1,10 +1,9 @@
-import { registry } from "blockly";
 import { FieldAngle } from "@blockly/field-angle";
+import { FieldColour } from "@blockly/field-colour";
 import { FieldColourHsvSliders } from "@blockly/field-colour-hsv-sliders";
 import { FieldDate } from "@blockly/field-date";
 import { FieldMultilineInput } from "@blockly/field-multilineinput";
-import { FieldColour } from "@blockly/field-colour";
-
+import { registry } from "blockly/core";
 import { FieldTypeDefinition } from "../fields";
 
 declare module "../fields" {
@@ -20,13 +19,13 @@ declare module "../fields" {
   }
 }
 
-export function registerExtensionFields() {
-  registry.register(registry.Type.INPUT, "angle", FieldAngle);
-  registry.register(registry.Type.INPUT, "colour", FieldColour);
-  registry.register(registry.Type.INPUT, "colour_hsv", FieldColourHsvSliders);
-  registry.register(registry.Type.INPUT, "date", FieldDate);
+export function registerFields() {
+  registry.register(registry.Type.FIELD, "angle", FieldAngle);
+  registry.register(registry.Type.FIELD, "colour", FieldColour);
+  registry.register(registry.Type.FIELD, "colour_hsv", FieldColourHsvSliders);
+  registry.register(registry.Type.FIELD, "date", FieldDate);
   registry.register(
-    registry.Type.INPUT,
+    registry.Type.FIELD,
     "multiline_text_input",
     FieldMultilineInput,
   );

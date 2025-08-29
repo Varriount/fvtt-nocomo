@@ -7,10 +7,10 @@
  * Shuffle list
  */
 
-import { BlockOrientation, BlockPlan } from "../../plans/block_plan";
 import { valueCode } from "../../codegen";
-import { ToolboxCategoryNames } from "../../toolbox";
 import { $expressionToString } from "../../macros";
+import { BlockOrientation, BlockPlan } from "../../plans/block_plan";
+import { ToolboxCategoryNames } from "../../toolbox";
 
 /**
  * Registration function.
@@ -91,27 +91,6 @@ FUNCTIONS.randomDecimal = $expressionToString!(
   },
 );
 
-FUNCTIONS.weightedRandomInteger = $expressionToString!(
-  //
-  function weightedRandomInteger<T>(choices: T[], weights: number[]): T {
-    const totalWeight = weights.reduce((acc, current) => acc + current);
-
-    let remainingWeight = Math.random() * totalWeight;
-    let choiceIndex = 0;
-
-    for (const weight of weights) {
-      remainingWeight = remainingWeight - weight;
-      if (remainingWeight <= 0) {
-        break;
-      }
-
-      choiceIndex = choiceIndex + 1;
-    }
-
-    return choices[choiceIndex];
-  },
-);
-
 FUNCTIONS.weightedChoice = $expressionToString!(
   //
   function randomChoice<T>(choices: T[], weights: number[]): T {
@@ -139,7 +118,7 @@ FUNCTIONS.weightedChoice = $expressionToString!(
 export const BLOCKS: Record<string, BlockPlan> = {};
 
 /**
- * Generate [N] random [whole | decimal] numbers between [X] and [Y].
+ * Generate N random [whole | decimal] numbers between MINIMUM and MAXIMUM.
  */
 BLOCKS.GENERATE_RANDOM_NUMBER = new BlockPlan({
   ...EXTENDS_OBJECT_BLOCK,
@@ -148,55 +127,59 @@ BLOCKS.GENERATE_RANDOM_NUMBER = new BlockPlan({
 
   inputs: [
     {
-      name: "minimum_value",
+      name: "MINIMUM_VALUE",
       accepts: ["Number"],
     },
     {
-      name: "maximum_value",
+      name: "MAXIMUM_VALUE",
       accepts: ["Number"],
     },
   ],
 
   fields: [
     {
-      name: "minimum_value_operator",
+      name: "MINIMUM_VALUE_OPERATOR",
       type: "dropdown",
-      value: [
-        ["greater_than", "true"],
-        ["greater_than_or_equal_to", "false"],
+      args: [
+        [
+          ["greater_than", "true"],
+          ["greater_than_or_equal_to", "false"],
+        ],
       ],
     },
     {
-      name: "maximum_value_operator",
+      name: "MAXIMUM_VALUE_OPERATOR",
       type: "dropdown",
-      value: [
-        ["less_than", "true"],
-        ["less_than_or_equal_to", "false"],
+      args: [
+        [
+          ["less_than", "true"],
+          ["less_than_or_equal_to", "false"],
+        ],
       ],
     },
     {
-      name: "number_kind",
+      name: "NUMBER_KIND",
       type: "dropdown",
-      value: [
-        ["integer", "randomInteger"],
-        ["decimal", "randomDecimal"],
+      args: [
+        [
+          ["integer", "randomInteger"],
+          ["decimal", "randomDecimal"],
+        ],
       ],
     },
   ],
 
   output: "Number",
 
-  generator: valueCode(
-    // language=Handlebars
-    `
-      {{number_kind}}(
-        {{minimum_value}},
-        {{maximum_value}},
-        {{minimum_value_operator}},
-        {{maximum_value_operator}},
-      )
-    `,
-  ),
+  // Language=Handlebars
+  toCode: `
+    {{NUMBER_KIND}}(
+      {{MINIMUM_VALUE}},
+      {{MAXIMUM_VALUE}},
+      {{MINIMUM_VALUE_OPERATOR}},
+      {{MAXIMUM_VALUE_OPERATOR}},
+    )
+  `,
 });
 
 /**
@@ -209,38 +192,37 @@ BLOCKS.SAMPLE_LIST = new BlockPlan({
 
   inputs: [
     {
-      name: "sample_size",
+      name: "SAMPLE_SIZE",
       accepts: ["Number"],
     },
     {
-      name: "list",
+      name: "LIST",
       accepts: ["List"],
     },
   ],
 
   fields: [
     {
-      name: "repetition_mode",
+      name: "REPETITION_MODE",
       type: "dropdown",
-      value: [
-        ["without", "true"],
-        ["with", "false"],
+      args: [
+        [
+          ["without", "true"],
+          ["with", "false"],
+        ],
       ],
     },
   ],
 
   output: "Number",
 
-  generator: valueCode(
-    // language=Handlebars
-    `
+  toCode: `
       randomInteger(
-        {{list}},
-        {{sample_size}},
-        {{repetition_mode}},
+        {{LIST}},
+        {{SAMPLE_SIZE}},
+        {{REPETITION_MODE}},
       )
     `,
-  ),
 });
 
 /**
@@ -254,22 +236,22 @@ BLOCKS.GENERATE_WEIGHTED_RANDOM_NUMBER = new BlockPlan({
 
   inputs: [
     {
-      name: "weights",
+      name: "WEIGHTS",
       accepts: ["List"],
     },
     {
-      name: "total_weight",
+      name: "TOTAL_WEIGHT",
       accepts: ["Number"],
     },
   ],
 
   output: "Number",
 
-  generator: valueCode(
+  toCode: valueCode(
     `
       (function () {
-        const weights = {{weights}};
-        const totalWeight = {{total_weight}};
+        const weights = {{WEIGHTS}};
+        const totalWeight = {{TOTAL_WEIGHT}};
         let random = Math.random() * totalWeight;
         for (let i = 0; i < weights.length; i++) {
           random -= weights[i];
@@ -293,30 +275,32 @@ BLOCKS.SHUFFLE_LIST = new BlockPlan({
 
   inputs: [
     {
-      name: "list",
+      name: "LIST",
       accepts: ["List"],
     },
   ],
 
   fields: [
     {
-      name: "copy_mode",
+      name: "COPY_MODE",
       type: "dropdown",
-      value: [
-        ["inplace", "true"],
-        ["copy", "false"],
+      args: [
+        [
+          ["inplace", "true"],
+          ["copy", "false"],
+        ],
       ],
     },
   ],
 
   output: "Number",
 
-  generator: valueCode(
-    // language=Handlebars
+  toCode: valueCode(
+    // Language=Handlebars
     `
       randomInteger(
-        {{list}},
-        {{copy_mode}},
+        {{LIST}},
+        {{COPY_MODE}},
       )
     `,
   ),

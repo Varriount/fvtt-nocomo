@@ -1,14 +1,11 @@
-/*
- * Get property
- * Set property
- * Delete property
- * List properties
- */
 import { Order } from "blockly/javascript";
-import { BlockOrientation, BlockPlan } from "../../plans/block_plan";
+import {
+  BlockOrientation,
+  BlockPlan,
+  BlockPlanData,
+} from "../../plans/block_plan";
 import { FieldPlanData } from "../../plans/field_plan";
-import { DefaultInputValue } from "../../plans/input_plan";
-import { stmtCode, valueCode } from "../../codegen";
+import { InputPlanData, ShadowInputValue } from "../../plans/input_plan";
 import { ToolboxCategoryNames } from "../../toolbox";
 
 /**
@@ -46,28 +43,28 @@ export const BLOCKS: Record<string, BlockPlan> = {};
 /**
  * Common Input Definitions
  */
-const EXTENDS_OBJECT_BLOCK = {
+const EXTENDS_OBJECT_BLOCK: Partial<BlockPlanData> = {
   orientation: "vertical" as BlockOrientation,
   categories: ["objects"] as (keyof ToolboxCategoryNames)[],
 };
 
-export const BLANK_STRING_INPUT = {
-  acceptedTypes: ["String"],
-  default: {
+export const BLANK_STRING_INPUT: Partial<InputPlanData> = {
+  accepts: ["String"],
+  shadow: {
     block: "text",
-    inputs: [] as DefaultInputValue[],
+    inputs: [] as ShadowInputValue[],
     fields: [] as FieldPlanData[],
   },
 };
 
-export const NULL_LITERAL_INPUT = {
-  acceptedTypes: ["String"],
-  default: {
-    block: "text",
-    inputs: [] as DefaultInputValue[],
-    fields: [] as FieldPlanData[],
-  },
-};
+// export const NULL_LITERAL_INPUT = {
+//   accepts: ["String"],
+//   shadow: {
+//     block: "text",
+//     inputs: [] as ShadowInputValue[],
+//     fields: [] as FieldPlanData[],
+//   },
+// };
 
 /**
  * Creates an object with the given properties.
@@ -77,14 +74,32 @@ BLOCKS.CREATE_OBJECT = new BlockPlan({
   name: "create_object",
   kind: "value",
 
-  generator: valueCode("({ {{PROPERTIES}} })"),
+  toCode: "({ {{PROPERTIES}} })",
   output: "Object",
 
   inputs: [
     {
       name: "PROPERTIES",
-      type: "statement",
+      kind: "statement",
       accepts: ["create_object_property"],
+    },
+  ],
+  fields: [
+    {
+      name: "CONTEXT_MENU",
+      type: "context_button",
+      args: [
+        "Add block",
+        [
+          {
+            text: "String Field",
+            enabled: true,
+            callback: () => {},
+            scope: {},
+            weight: 5,
+          },
+        ],
+      ],
     },
   ],
 });
@@ -101,19 +116,19 @@ BLOCKS.CREATE_OBJECT__PROPERTY = new BlockPlan({
   inputs: [
     {
       ...BLANK_STRING_INPUT,
-      name: "PROPERTY_NAME",
+      name: "NAME",
     },
     {
-      name: "PROPERTY_VALUE",
+      name: "VALUE",
       accepts: null,
     },
   ],
   output: "create_object_property",
-  generator: stmtCode("{{PROPERTY_NAME}}: {{PROPERTY_VALUE}},"),
+  toCode: "{{NAME}}: {{VALUE}},",
 });
 
 /**
- * Retrieves the value of a specified property from an object.
+ * Get the NAME property's value from OBJECT.
  */
 BLOCKS.GET_OBJECT_PROPERTY = new BlockPlan({
   name: "get_object_property",
@@ -123,49 +138,22 @@ BLOCKS.GET_OBJECT_PROPERTY = new BlockPlan({
 
   inputs: [
     {
-      name: "PROPERTY_NAME",
+      name: "NAME",
       accepts: ["String"],
     },
-  ],
-
-  // Whether to act on a single object, or multiple objects.
-  variants: [
-    // Get the value of a property from a single object.
     {
-      name: "get_single_object_property",
-      message: "Get the value of ${PROPERTY_NAME} from ${OBJECT}",
-      inputs: [
-        {
-          name: "OBJECT",
-          accepts: ["Object"],
-        },
-      ],
-      output: {
-        types: ["Any"],
-      },
-      generator: () => [``, Order.ATOMIC],
-    },
-
-    // Get the value of a property from multiple objects.
-    {
-      name: "get_multiple_object_property",
-      message: "Get the value of ${PROPERTY_NAME} from ${OBJECTS}",
-      inputs: [
-        {
-          name: "OBJECTS",
-          accepts: ["List[Object]"],
-        },
-      ],
-      output: {
-        types: ["Any"],
-      },
-      generator: () => [``, Order.ATOMIC],
+      name: "OBJECT",
+      accepts: ["Object"],
     },
   ],
+  output: {
+    types: ["Any"],
+  },
+  toCode: () => [``, Order.ATOMIC],
 });
 
 /**
- * Sets a property of an object to a specified value.
+ * Set the NAME property's value to VALUE on OBJECT.
  */
 BLOCKS.SET_OBJECT_PROPERTY = new BlockPlan({
   name: "set_object_property",
@@ -175,51 +163,24 @@ BLOCKS.SET_OBJECT_PROPERTY = new BlockPlan({
 
   inputs: [
     {
-      name: "PROPERTY_NAME",
+      name: "NAME",
       accepts: ["String"],
     },
     {
-      name: "PROPERTY_VALUE",
+      name: "VALUE",
       accepts: ["Any"],
     },
-  ],
-
-  // Whether to act on a single object, or multiple objects.
-  variants: [
-    // Set the value of a property on a single object.
     {
-      name: "single",
-      message:
-        "${plurality} Set ${PROPERTY_NAME} on ${OBJECT} to ${PROPERTY_VALUE}",
-      inputs: [
-        {
-          name: "OBJECT",
-          accepts: ["Object"],
-        },
-      ],
-      output: "List[{documentClass}]",
-      generator: () => "",
-    },
-
-    // Set the value of a property on multiple objects.
-    {
-      name: "multiple",
-      message:
-        "${plurality} Set ${PROPERTY_NAME} on ${OBJECTS} to ${PROPERTY_VALUE}",
-      inputs: [
-        {
-          name: "OBJECTS",
-          accepts: ["List[Object]"],
-        },
-      ],
-      output: "List[{documentClass}]",
-      generator: () => "",
+      name: "OBJECT",
+      accepts: ["Object"],
     },
   ],
+  output: "List[{documentClass}]",
+  toCode: () => "",
 });
 
 /**
- * Deletes a property from an object.
+ * Delete the NAME property from OBJECT.
  */
 BLOCKS.DELETE_OBJECT_PROPERTY = new BlockPlan({
   name: "delete_object_property",
@@ -229,164 +190,69 @@ BLOCKS.DELETE_OBJECT_PROPERTY = new BlockPlan({
 
   inputs: [
     {
-      name: "PROPERTY_NAME",
+      name: "NAME",
       accepts: ["String"],
     },
-  ],
-
-  // Whether to act on a single object, or multiple objects.
-  variants: [
-    // Delete a property from a single object.
     {
-      name: "single",
-      message: "Remove ${PROPERTY_NAME} from ${OBJECT}",
-      inputs: [
-        {
-          name: "OBJECT",
-          accepts: ["Object"],
-        },
-      ],
-      output: undefined,
-      generator: () => [``, Order.ATOMIC],
-    },
-
-    // Delete a property from multiple objects.
-    {
-      name: "multiple",
-      message: "Remove ${PROPERTY_NAME} from ${OBJECTS}",
-      inputs: [
-        {
-          name: "OBJECTS",
-          accepts: ["List[Object]"],
-        },
-      ],
-      output: undefined,
-      generator: () => [``, Order.ATOMIC],
+      name: "OBJECT",
+      accepts: ["Object"],
     },
   ],
+  output: undefined,
+  toCode: () => [``, Order.ATOMIC],
 });
 
 /**
- * Lists the property names of an object.
+ * Get a list of property names from OBJECT.
  */
 BLOCKS.GET_OBJECT_PROPERTY_NAMES = new BlockPlan({
   name: "get_object_property_names",
   kind: "value",
   orientation: "vertical",
   categories: ["objects"],
-  variants: [
-    // List the property names of a single object.
+  inputs: [
     {
-      name: "single",
-      message: "List property names of ${OBJECT}",
-      inputs: [
-        {
-          name: "OBJECT",
-          accepts: ["Object"],
-        },
-      ],
-      output: "Iterable[string]",
-      generator: () => [``, Order.ATOMIC],
-    },
-
-    // List the property names of multiple objects.
-    {
-      name: "multiple",
-      message: "List property names of ${OBJECTS}",
-      inputs: [
-        {
-          name: "OBJECTS",
-          accepts: ["List[Object]"],
-        },
-      ],
-      output: "Iterable[string]",
-      generator: () => [``, Order.ATOMIC],
+      name: "OBJECT",
+      accepts: ["Object"],
     },
   ],
+  output: "Iterable[string]",
+  toCode: () => [``, Order.ATOMIC],
 });
 
 /**
- * Lists the property values of an object.
+ * Get a list of property values from OBJECT.
  */
 BLOCKS.GET_OBJECT_PROPERTY_VALUES = new BlockPlan({
   name: "get_object_property_values",
   kind: "value",
   orientation: "vertical",
   categories: ["objects"],
-  variants: [
-    // List the property values of a single object.
+  inputs: [
     {
-      name: "single",
-      message: "List property values of ${OBJECT}",
-      inputs: [
-        {
-          name: "OBJECT",
-          accepts: ["Object"],
-        },
-      ],
-      output: {
-        types: ["Iterable[Any]"],
-      },
-      generator: () => [``, Order.ATOMIC],
-    },
-
-    // List the property values of multiple objects.
-    {
-      name: "multiple",
-      message: "List property values of ${OBJECTS}",
-      inputs: [
-        {
-          name: "OBJECTS",
-          accepts: ["List[Object]"],
-        },
-      ],
-      output: {
-        types: ["Iterable[Any]"],
-      },
-      generator: () => [``, Order.ATOMIC],
+      name: "OBJECT",
+      accepts: ["Object"],
     },
   ],
+  output: {
+    types: ["Iterable[Any]"],
+  },
 });
 
 /**
- * Lists the property entries of an object or objects.
+ * Get a list of properties and their values from OBJECT.
  */
 BLOCKS.GET_OBJECT_PROPERTY_ENTRIES = new BlockPlan({
   name: "get_object_property_entries",
   kind: "value",
   orientation: "vertical",
   categories: ["objects"],
-  variants: [
-    // List the property entries of a single object.
+  inputs: [
     {
-      name: "single",
-      message: "List properties of ${OBJECT}",
-      inputs: [
-        {
-          name: "OBJECT",
-          accepts: ["Object"],
-        },
-      ],
-      output: "List[Object]",
-      generator: () => [``, Order.ATOMIC],
-    },
-
-    // List the property entries of multiple objects.
-    {
-      name: "multiple",
-      message: "List properties of ${OBJECTS}",
-      inputs: [
-        {
-          name: "OBJECTS",
-          accepts: ["List[Object]"],
-        },
-      ],
-      output: "List[List[Object]]",
-      generator: () => [``, Order.ATOMIC],
+      name: "OBJECT",
+      accepts: ["Object"],
     },
   ],
+  output: "List[Object]",
+  toCode: () => [``, Order.ATOMIC],
 });
-
-/**
- * variant
- */

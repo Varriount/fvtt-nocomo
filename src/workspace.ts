@@ -1,20 +1,16 @@
-/**
- * Normalizes the logic that various extensions and plugins use.
- */
-import * as Blockly from "blockly";
-import { BlocklyOptions } from "blockly";
-import { toolbox } from "./toolbox";
+import { FixedEdgesMetricsManager } from "@blockly/fixed-edges";
+import { Modal } from "@blockly/plugin-modal";
 import {
   ScrollBlockDragger,
   ScrollOptions,
 } from "@blockly/plugin-scroll-options";
-import { FixedEdgesMetricsManager } from "@blockly/fixed-edges";
-import { Multiselect } from "@mit-app-inventor/blockly-plugin-workspace-multiselect";
 import { WorkspaceSearch } from "@blockly/plugin-workspace-search";
-import { ContentHighlight } from "@blockly/workspace-content-highlight";
-import { Modal } from "@blockly/plugin-modal";
-import { CachedFixedEdgesMetricsManager } from "./utils";
 import { shadowBlockConversionChangeListener } from "@blockly/shadow-block-converter";
+import { ContentHighlight } from "@blockly/workspace-content-highlight";
+// import { Multiselect } from "@mit-app-inventor/blockly-plugin-workspace-multiselect";
+import * as Blockly from "blockly/core";
+import { toolbox } from "./toolbox";
+import { CachedFixedEdgesMetricsManager } from "./utils";
 
 // Options for the FixedEdges extension.
 const FIXED_EDGES_CONFIG = {
@@ -29,19 +25,19 @@ const SCROLL_OPTIONS_CONFIGURATION = {
 };
 
 // Options for the MultiSelect extension.
-const MULTI_SELECT_CONFIGURATION = {
-  multiFieldUpdate: true,
+// const MULTISELECT_CONFIGURATION = {
+//   multiFieldUpdate: true,
+//   workspaceAutoFocus: true,
+//   multiselectIcon: {
+//     hideIcon: true,
+//   },
+// };
 
-  workspaceAutoFocus: true,
+// Storage key used to save data in local storage.
+const STORAGE_KEY = "nocomo";
 
-  multiselectIcon: {
-    hideIcon: true,
-  },
-};
-
-const STORAGE_KEY = "mainWorkspace";
-
-const BLOCKLY_CONFIGURATION: BlocklyOptions = {
+// Configuration to use when initializing the Blockly workspace.
+const BLOCKLY_CONFIGURATION: Blockly.BlocklyOptions = {
   toolbox: toolbox,
 
   collapse: true,
@@ -58,8 +54,8 @@ const BLOCKLY_CONFIGURATION: BlocklyOptions = {
 
   horizontalLayout: false,
   maxBlocks: Infinity,
-  // maxInstances: Infinity,
-  // media: "",
+  // MaxInstances: Infinity,
+  // Media: "",
 
   move: {
     scrollbars: {
@@ -93,49 +89,51 @@ const BLOCKLY_CONFIGURATION: BlocklyOptions = {
 
   plugins: {
     blockDragger: ScrollBlockDragger,
-    // connectionChecker: undefined,
-    // connectionPreviewer: undefined,
-    // flyoutsVerticalToolbox: undefined,
-    // flyoutsHorizontalToolbox: undefined,
+    // ConnectionChecker: undefined,
+    // ConnectionPreviewer: undefined,
+    // FlyoutsVerticalToolbox: undefined,
+    // FlyoutsHorizontalToolbox: undefined,
     metricsManager: CachedFixedEdgesMetricsManager,
-    // renderer: undefined,
-    // toolbox: undefined,
+    // Renderer: undefined,
+    // Toolbox: undefined,
   },
 };
 
-export function create(container: Element | string) {
-  // Create the workspace. //
+/**
+ * Creates and configures a Blockly workspace.
+ *
+ * @param container
+ *   The HTML element or a string representing the id of an element where
+ *   the Blockly workspace will be injected.
+ *
+ * @return
+ *   The initialized Blockly workspace instance.
+ */
+export function createBlocklyWorkspace(container: Element | string) {
+  // Create the workspace.
   const workspace = Blockly.inject(container, BLOCKLY_CONFIGURATION);
 
-  // Initialize "standard" extensions. //
-  // eslint-disable-next-line
-  function initStandardExtension(extensionClass: any, config?: any) {
-    const extension = new extensionClass(workspace);
-    extension.init(config);
-    return extension;
-  }
-
   // Allow searching through the workspace.
-  initStandardExtension(WorkspaceSearch);
+  new WorkspaceSearch(workspace).init();
 
   // Highlight the workspace area that contains content.
-  initStandardExtension(ContentHighlight);
+  new ContentHighlight(workspace).init();
 
   // Automatically scroll when a block is dragged near the canvas edge.
-  initStandardExtension(ScrollOptions, SCROLL_OPTIONS_CONFIGURATION);
+  new ScrollOptions(workspace).init(SCROLL_OPTIONS_CONFIGURATION);
 
   // Allow creating modal popups.
-  initStandardExtension(Modal);
+  new Modal(workspace).init();
 
   // Allows selecting multiple blocks at once.
-  initStandardExtension(Multiselect, MULTI_SELECT_CONFIGURATION);
+  // TODO: Fix this plugin
+  // new Multiselect(workspace).init(MULTISELECT_CONFIGURATION);
 
   // Prevent scrolling beyond configured canvas edges.
   FixedEdgesMetricsManager.setFixedEdges(FIXED_EDGES_CONFIG);
 
   // Automatically disable orphaned blocks.
-  // workspace.addChangeListener(Blockly.Events.disableOrphans);
-  // initStandardExtension(DisableTopBlocks);
+  // New DisableTopBlocks(workspace).init();
 
   // Automatically convert shadow blocks to real blocks once they are modified.
   workspace.addChangeListener(shadowBlockConversionChangeListener);

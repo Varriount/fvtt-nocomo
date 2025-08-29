@@ -1,5 +1,5 @@
 import { parsers as tparsers } from "prettier/plugins/typescript";
-// import { AstPath } from "prettier";
+// Import { AstPath } from "prettier";
 
 // newline-before-top-level.js
 /**

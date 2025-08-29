@@ -1,35 +1,34 @@
 /**
  *
  */
+import { Block, Input, registry } from "blockly/core";
 import { InputType } from "../inputs";
-import { Block, Input, registry } from "blockly";
 import { FieldPlanData } from "./field_plan";
 
 export interface InputPlanData {
   name: string;
-  type?: InputType;
-  default?: Omit<DefaultInputValue, "name">;
+  kind?: InputType;
+  shadow?: Omit<ShadowInputValue, "name">;
   accepts?: string[] | null;
-  // | {
-  //     types: string[];
-  //   };
 }
 
-export interface DefaultInputValue {
+export interface ShadowInputValue {
   name: string;
   block: string;
-  inputs: DefaultInputValue[];
-  fields: FieldPlanData[];
+  inputs?: ShadowInputValue[];
+  fields?: Omit<FieldPlanData, "type">[];
 }
 
 export class InputPlan {
   name: string;
   type: InputType;
+  shadow?: Omit<ShadowInputValue, "name">;
   acceptedTypes: string[] | null;
 
   constructor(data: InputPlanData) {
     this.name = data.name;
-    this.type = data.type ?? "value";
+    this.type = data.kind ?? "value";
+    this.shadow = data.shadow;
     this.acceptedTypes = data.accepts ?? null;
   }
 
@@ -51,7 +50,6 @@ export class InputPlan {
     // @ts-expect-error `fieldClass` will never be null due to `throwIfMissing`.
     const input = new inputClass(this.name, block);
     if (input.connection != null) {
-      console.log("setCheck", acceptedTypes);
       input.setCheck(acceptedTypes);
     }
 
@@ -59,31 +57,19 @@ export class InputPlan {
   }
 }
 
-export class EndRowInputPlan extends InputPlan {
-  constructor() {
-    super({
-      name: undefined as unknown as string,
-      type: "end_row",
-    });
-  }
-}
+const DUMMY_INPUT_PLAN = new InputPlan({
+  name: undefined as unknown as string,
+  kind: "end_row",
+});
+const END_ROW_INPUT_PLAN = new InputPlan({
+  name: undefined as unknown as string,
+  kind: "dummy",
+});
 
-export class DummyInputPlan extends InputPlan {
-  constructor() {
-    super({
-      name: undefined as unknown as string,
-      type: "dummy",
-    });
-  }
-}
-
-const DUMMY_INPUT_PLAN = new DummyInputPlan();
-const END_ROW_INPUT_PLAN = new EndRowInputPlan();
-
-export function DummyInput(block: Block) {
+export function createDummyInput(block: Block) {
   return DUMMY_INPUT_PLAN.createInput(block);
 }
 
-export function EndRowInput(block: Block) {
+export function createEndRowInput(block: Block) {
   return END_ROW_INPUT_PLAN.createInput(block);
 }
