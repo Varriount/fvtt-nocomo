@@ -1,7 +1,11 @@
+import * as Blockly from "blockly/core";
+
 import { FixedEdgesMetricsManager } from "@blockly/fixed-edges";
-import { MetricsManager } from "blockly/core";
+
 import { colord, extend } from "colord";
 import labPlugin from "colord/plugins/lab";
+
+type ContainerRegion = Blockly.MetricsManager.ContainerRegion;
 
 export function isString(value: unknown): value is string {
   return typeof value === "string" || value instanceof String;
@@ -53,7 +57,7 @@ export function* allMatches(regex: RegExp, text: string) {
  */
 export class CachedFixedEdgesMetricsManager extends FixedEdgesMetricsManager {
   useCachedContentMetrics = false;
-  cachedContentMetrics: MetricsManager.ContainerRegion | null = null;
+  cachedContentMetrics: ContainerRegion | null = null;
 
   getContentMetrics() {
     if (this.useCachedContentMetrics && this.cachedContentMetrics) {

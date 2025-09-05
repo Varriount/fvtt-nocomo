@@ -1,4 +1,11 @@
-import { Block, Blocks, Field, FieldLabel, Input } from "blockly/core";
+import {
+  Block,
+  Blocks,
+  Field,
+  FieldLabel,
+  Input,
+  Workspace,
+} from "blockly/core";
 import { ConnectionState, State } from "blockly/core/serialization/blocks";
 import { BlockInfo } from "blockly/core/utils/toolbox";
 import { JavascriptGenerator, javascriptGenerator } from "blockly/javascript";
@@ -93,14 +100,52 @@ export type BlockPlanData = {
 
   /**
    * Lifecycle hook that is run whenever an instance of this block is
-   * constructed.
+   * constructed, including from deserialization.
+   */
+  onConstruct?: (this: Block) => void;
+
+  /**
+   * Lifecycle hook that is run whenever an instance of this block is
+   * created by the user, excluding deserialization.
    */
   onCreate?: (this: Block) => void;
+
+  /**
+   * Lifecycle hook that is run whenever an instance of this block is
+   * destroyed.
+   */
+  onDestroy?: (this: Block) => void;
 
   /**
    * Lifecycle hook that is run whenever the workspace is updated.
    */
   onWorkspaceUpdate?: (this: Block, event: any) => void;
+
+  /**
+   * A hook for serializing extra state for this block.
+   */
+  saveExtraData?: (this: Block) => any;
+
+  /**
+   * A hook for deserializing extra state for this block.
+   */
+  loadExtraData?: (this: Block, data: any) => void;
+
+  /**
+   * A hook for reconfiguring a block when its mutator changes.
+   */
+  compose?: (rootBlock: Block) => void;
+
+  /**
+   * A hook creating a mutator from a block's state.
+   */
+  decompose?: (workspace: Workspace) => Block;
+
+  /**
+   * A hook for setting associations between a block and its inputs, so that
+   * the `compose` hook can reassociated old inputs.
+   */
+  saveConnections?: (this: Block) => void;
 
   // Temporary fields
   colour?: number;
@@ -129,8 +174,15 @@ export class BlockPlan {
 
   toCode?: CodeGenerationFunction;
 
+  onConstruct?: (this: Block) => void;
   onCreate?: (this: Block) => void;
+  onDestroy?: (this: Block) => void;
   onWorkspaceUpdate?: (this: Block, event: any) => void;
+  saveExtraState?: (this: Block) => any;
+  loadExtraState?: (this: Block, data: any) => void;
+  compose?: (rootBlock: Block) => void;
+  decompose?: (workspace: Workspace) => Block;
+  saveConnections?: (this: Block) => void;
 
   message: string | null;
   tooltip: string | null;
@@ -151,9 +203,6 @@ export class BlockPlan {
     this.message = localize(`${this.name}.MESSAGE`);
     this.tooltip = localize(`${this.name}.TOOLTIP`);
     this.helpURL = localize(`${this.name}.HELP_URL`);
-
-    this.onCreate = data.onCreate;
-    this.onWorkspaceUpdate = data.onWorkspaceUpdate;
 
     // Extract and normalize the variant's output information.
     this.output = new OutputPlan(data.output);
@@ -179,8 +228,16 @@ export class BlockPlan {
     const blockPlan = this;
     Blocks[this.name] = {
       init(this: Block) {
-        blockPlan.initializeBlock(this);
+        blockPlan.initializeBlock(this as __BPBlock);
       },
+      generator: blockPlan.toCode,
+      destroy: blockPlan.onDestroy,
+      onchange: blockPlan.onWorkspaceUpdate,
+      saveExtraState: blockPlan.saveExtraState,
+      loadExtraState: blockPlan.loadExtraState,
+      saveConnections: blockPlan.saveConnections,
+      compose: blockPlan.compose,
+      decompose: blockPlan.decompose,
     };
 
     // Define the code generator used for the new `Block` instances.
@@ -227,19 +284,17 @@ export class BlockPlan {
       block.setPreviousStatement(false);
     }
 
-    // Set the block's generator
-    block.generator = this.toCode;
-
-    // Attach the onWorkspaceUpdate lifecycle hook
-    if (this.onWorkspaceUpdate) {
-      block.setOnChange(this.onWorkspaceUpdate);
+    // Run the onConstruct lifecycle hook
+    if (this.onConstruct) {
+      this.onConstruct.apply(block);
     }
 
-    // Run the onCreate lifecycle hook
-    if (this.onCreate) {
-      this.onCreate.apply(block);
-    }
+    // Run the onCreate lifecycle hook only for new blocks, not deserialized ones
+    // if (this.onCreate && Blockly.Events.isEnabled()) {
+    //   this.onCreate.apply(block);
+    // }
   }
+
   private setBlockInputsAndFields(block: Block) {
     const fieldPlans = this.fields;
     const inputPlans = this.inputs;
@@ -428,7 +483,7 @@ export class BlockPlan {
    * Now simplified to call the helper method.
    */
   generateToolboxEntry(): BlockInfo {
-    const x = {
+    return {
       kind: "block",
       ...this._buildBlockInfoContents(
         this.name,
@@ -436,6 +491,5 @@ export class BlockPlan {
         this.inputs.values(),
       ),
     };
-    return x;
   }
 }

@@ -22,6 +22,7 @@ import * as builtins from "./fields/builtins";
 import { registerBuiltinInputs } from "./inputs/builtins";
 import { toolbox } from "./toolbox";
 import * as Workspace from "./workspace";
+import "./blocks/other/other";
 
 // Get our target UI elements.
 const CODE_DIV = document.getElementById("generatedCode");

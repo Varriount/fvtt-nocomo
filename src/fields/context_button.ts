@@ -1,9 +1,6 @@
-import * as core from "blockly/core";
-import { ContextMenu, FieldValidator, registry } from "blockly/core";
 import { ContextMenuOption } from "blockly/core/contextmenu_registry";
 import { FieldButton, FieldButtonConfig } from "./button";
-
-const Coordinate = core.utils.Coordinate;
+import { ContextMenu, FieldValidator, registry } from "blockly/core";
 
 declare module "../fields" {
   export interface FieldTypes {

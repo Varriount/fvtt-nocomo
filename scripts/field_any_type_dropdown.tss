@@ -27,7 +27,7 @@ export type MenuGenerator<T> = MenuOption<T>[] | MenuGeneratorFunction<T>;
 export type FieldTypedDropdownConfig = FieldConfig;
 
 /**
- * fromJson config for the dropdown field.
+ * FromJson config for the dropdown field.
  */
 export interface FieldTypedDropdownFromJsonConfig<T>
   extends FieldTypedDropdownConfig {

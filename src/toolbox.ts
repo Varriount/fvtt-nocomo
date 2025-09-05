@@ -9,7 +9,6 @@
  * }
  * ```
  */
-import { ToolboxInfo } from "blockly/core/utils/toolbox";
 import { functionsCategory } from "./toolbox/functions";
 import { listsCategory } from "./toolbox/lists";
 import { logicCategory } from "./toolbox/logic";
@@ -17,6 +16,7 @@ import { loopsCategory } from "./toolbox/loops";
 import { mathCategory } from "./toolbox/math";
 import { textCategory } from "./toolbox/text";
 import { variablesCategory } from "./toolbox/variables";
+import { ToolboxInfo } from "blockly/core/utils/toolbox";
 
 /**
  * Default Input Types
