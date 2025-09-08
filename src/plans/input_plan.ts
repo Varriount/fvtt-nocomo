@@ -1,9 +1,11 @@
 /**
  *
  */
-import { Block, Input, registry } from "blockly/core";
+import { FieldLabel, Input, registry } from "blockly/core";
 import { InputType } from "../inputs";
 import { FieldPlanData } from "./field_plan";
+import { PlannedBlock } from "./block_plan";
+import { localize } from "../localization";
 
 export interface InputPlanData {
   name: string;
@@ -35,7 +37,7 @@ export class InputPlan {
   /**
    * Creates an input object from the input plan.
    */
-  createInput(block: Block): Input {
+  createInput(block: PlannedBlock): Input {
     const classType = registry.Type.INPUT;
     const inputClassName = this.type;
     const throwIfMissing = true;
@@ -47,6 +49,7 @@ export class InputPlan {
       throwIfMissing,
     );
 
+    // TODO: Can type definition be modified to support this?
     // @ts-expect-error `fieldClass` will never be null due to `throwIfMissing`.
     const input = new inputClass(this.name, block);
     if (input.connection != null) {
@@ -54,6 +57,16 @@ export class InputPlan {
     }
 
     return input;
+  }
+
+  finalizeInput(input: Input, block: PlannedBlock) {
+    // If the last field is a FieldLabel, set its tooltip.
+    // TODO: Handle being called multiple times?
+    const field = input.fieldRow[input.fieldRow.length - 1];
+    if (field instanceof FieldLabel) {
+      const tooltip = localize(`${block.name}.${this.name}.TOOLTIP`);
+      field.setTooltip(tooltip);
+    }
   }
 }
 
@@ -66,10 +79,10 @@ const END_ROW_INPUT_PLAN = new InputPlan({
   kind: "dummy",
 });
 
-export function createDummyInput(block: Block) {
+export function createDummyInput(block: PlannedBlock) {
   return DUMMY_INPUT_PLAN.createInput(block);
 }
 
-export function createEndRowInput(block: Block) {
+export function createEndRowInput(block: PlannedBlock) {
   return END_ROW_INPUT_PLAN.createInput(block);
 }

@@ -21,6 +21,7 @@ import {
   InputPlanData,
   ShadowInputValue,
 } from "./input_plan";
+import { MutatorPlan, MutatorPlanData } from "./mutator_plan";
 import { OutputPlan, OutputPlanData } from "./output_plan";
 
 /**
@@ -31,6 +32,9 @@ import { OutputPlan, OutputPlanData } from "./output_plan";
  * {{block_name}}.HORIZONTAL_MESSAGE
  * {{block_name}}.VERTICAL_MESSAGE
  * {{block_name}}.COLLAPSED_MESSAGE
+ * {{block_name}}.TOOLTIP
+ * {{block_name}}.{{FIELD_NAME}}.TOOLTIP
+ * {{block_name}}.{{DROPDOWN_FIELD_NAME}}.TOOLTIP
  */
 
 /**
@@ -149,10 +153,13 @@ export type BlockPlanData = {
 
   // Temporary fields
   colour?: number;
+
+  mutator?: MutatorPlanData;
 };
 
-class __BPBlock extends Block {
-  generator?: CodeGenerationFunction;
+export interface PlannedBlock extends Block {
+  name: string;
+  generator: CodeGenerationFunction;
 }
 
 /*****************************************************************************/
@@ -171,6 +178,7 @@ export class BlockPlan {
   fields: Map<string, FieldPlan>;
   output?: OutputPlan;
   colour: number | string;
+  mutator?: MutatorPlan;
 
   toCode?: CodeGenerationFunction;
 
@@ -207,6 +215,10 @@ export class BlockPlan {
     // Extract and normalize the variant's output information.
     this.output = new OutputPlan(data.output);
 
+    if (data.mutator) {
+      this.mutator = new MutatorPlan(data.mutator);
+    }
+
     // Create proper maps from the field and input lists.
     this.inputs = new Map();
     if (data.inputs) {
@@ -226,34 +238,35 @@ export class BlockPlan {
   defineBlock() {
     // Define the block definition used when creating new `Block` instances.
     const blockPlan = this;
+    const mutatorPlan = this.mutator;
     Blocks[this.name] = {
       init(this: Block) {
-        blockPlan.initializeBlock(this as __BPBlock);
+        blockPlan.initializeBlock(this as PlannedBlock);
       },
       generator: blockPlan.toCode,
       destroy: blockPlan.onDestroy,
       onchange: blockPlan.onWorkspaceUpdate,
       saveExtraState: blockPlan.saveExtraState,
       loadExtraState: blockPlan.loadExtraState,
-      saveConnections: blockPlan.saveConnections,
-      compose: blockPlan.compose,
-      decompose: blockPlan.decompose,
+      saveConnections: mutatorPlan?.onSourceBlockUpdate,
+      compose: mutatorPlan?.onMutatorUpdate,
+      decompose: mutatorPlan?.onMutatorCreate,
     };
 
     // Define the code generator used for the new `Block` instances.
     javascriptGenerator.forBlock[this.name] = function (
-      block: __BPBlock,
+      block: Block,
       generator: JavascriptGenerator,
     ) {
-      const f = block.generator ?? (() => "");
+      const f = (block as PlannedBlock).generator ?? (() => "");
       return f(block, generator);
     };
   }
 
-  initializeBlock(block: __BPBlock) {
+  initializeBlock(block: PlannedBlock) {
     // Set basic block properties.
-    block.setTooltip("");
-    block.setHelpUrl("");
+    block.setTooltip(this.tooltip ?? "");
+    block.setHelpUrl(this.helpURL ?? "");
     block.setColour(this.colour);
 
     switch (this.orientation) {
@@ -295,28 +308,28 @@ export class BlockPlan {
     // }
   }
 
-  private setBlockInputsAndFields(block: Block) {
+  private setBlockInputsAndFields(block: PlannedBlock) {
     const fieldPlans = this.fields;
     const inputPlans = this.inputs;
 
-    const inputMap = new Map<string, Input>();
+    const inputPlanMap = new Map<string, InputPlan>();
     for (const [name, plan] of inputPlans) {
-      inputMap.set(name, plan.createInput(block));
+      inputPlanMap.set(name, plan);
     }
 
-    const fieldMap = new Map<string, Field>();
+    const fieldPlanMap = new Map<string, FieldPlan>();
     for (const [name, plan] of fieldPlans) {
-      fieldMap.set(name, plan.createField(block));
+      fieldPlanMap.set(name, plan);
     }
 
     // Buffer for collecting field data that will later be appended to inputs.
-    let fieldBuffer: Field[] = [];
+    const fieldBuffer: Field[] = [];
 
     // Helper function to append all buffered fields to the given input,
     // attach the input to the block, then clear the buffer.
     function drainFieldBufferInto(input: Input) {
       fieldBuffer.forEach(f => input.appendField(f, f.name));
-      fieldBuffer = [];
+      fieldBuffer.length = 0;
     }
 
     const message = this.message ?? this.synthesizeDefaultMessage();
@@ -341,17 +354,20 @@ export class BlockPlan {
         case "parameterName": {
           // If the parameter is an input plan, initialize an input from it,
           // add any buffered fields to it, then append it to the block.
-          const input = inputMap.get(token);
-          if (input != null) {
+          const inputPlan = inputPlanMap.get(token);
+          if (inputPlan != null) {
+            const input = inputPlan.createInput(block);
             drainFieldBufferInto(input);
+            inputPlan.finalizeInput(input, block);
             block.appendInput(input);
             continue;
           }
 
           // If the parameter is a field plan, initialize a field and
           // add it to the field buffer.
-          const field = fieldMap.get(token);
-          if (field != null) {
+          const fieldPlan = fieldPlanMap.get(token);
+          if (fieldPlan != null) {
+            const field = fieldPlan.createField(block);
             fieldBuffer.push(field);
             continue;
           }
@@ -464,7 +480,6 @@ export class BlockPlan {
 
   /**
    * Recursively creates a BlockInfo object for a shadow block.
-   * Now simplified to call the helper method.
    */
   private createShadowBlockInfo(
     defaultValue: Omit<ShadowInputValue, "name">,
@@ -480,7 +495,6 @@ export class BlockPlan {
 
   /**
    * Generates a Blockly toolbox entry for the block.
-   * Now simplified to call the helper method.
    */
   generateToolboxEntry(): BlockInfo {
     return {

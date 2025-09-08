@@ -2,11 +2,12 @@ import * as Blockly from "blockly";
 import {
   Block,
   BlockSvg,
+  browserEvents,
   Events,
+  Flyout,
+  FlyoutItem,
   IHasBubble,
   renderManagement,
-  Scrollbar,
-  VerticalFlyout,
   WorkspaceSvg,
 } from "blockly";
 
@@ -15,13 +16,38 @@ const ICON_SIZE = 17;
 /**
  * A flyout which expands to fill its parent element.
  */
-class FillFlyout extends VerticalFlyout {
-  override getHeight(): number {
-    return this.svgGroup_?.parentElement?.getBoundingClientRect().height ?? 0;
+export class FillFlyout extends Flyout {
+  static registryName = "fillFlyout";
+  bubbleWidth: number;
+  bubbleHeight: number;
+
+  constructor(options: Blockly.Options, width: number, height: number) {
+    super(options);
+    this.bubbleWidth = width;
+    this.bubbleHeight = height;
+    this.width_ = width;
+    this.height_ = height;
   }
 
-  override getWidth(): number {
-    return this.svgGroup_?.parentElement?.getBoundingClientRect().width ?? 0;
+  protected override setMetrics_(xyRatio: { x: number; y: number }) {
+    if (!this.isVisible()) {
+      return;
+    }
+    const metricsManager = this.workspace_.getMetricsManager();
+    const scrollMetrics = metricsManager.getScrollMetrics();
+    const viewMetrics = metricsManager.getViewMetrics();
+    const absoluteMetrics = metricsManager.getAbsoluteMetrics();
+
+    if (typeof xyRatio.y === "number") {
+      this.workspace_.scrollY = -(
+        scrollMetrics.top +
+        (scrollMetrics.height - viewMetrics.height) * xyRatio.y
+      );
+    }
+    this.workspace_.translate(
+      this.workspace_.scrollX + absoluteMetrics.left,
+      this.workspace_.scrollY + absoluteMetrics.top,
+    );
   }
 
   override getX(): number {
@@ -29,12 +55,15 @@ class FillFlyout extends VerticalFlyout {
   }
 
   override getY(): number {
+    // Y is always 0 since this is a vertical flyout.
     return 0;
   }
 
-  /** Move the flyout to the edge of the workspace. */
   override position() {
-    console.log(39);
+    if (!this.isVisible() || !this.targetWorkspace!.isVisible()) {
+      return;
+    }
+
     this.setBackgroundPath2(this.getWidth(), this.getHeight());
     this.positionAt_(
       this.getWidth(),
@@ -45,17 +74,16 @@ class FillFlyout extends VerticalFlyout {
   }
 
   private setBackgroundPath2(width: number, height: number) {
-    console.log(50);
     // Decide whether to start on the left or right.
     const path: Array<string | number> = [];
 
     // Start
     path.push("M 0,0");
 
-    // Top
-    path.push("h", width);
+    // Top edge
+    path.push("h", width - this.CORNER_RADIUS);
 
-    // Rounded corner.
+    // Top right rounded corner
     path.push(
       "a",
       this.CORNER_RADIUS,
@@ -67,10 +95,10 @@ class FillFlyout extends VerticalFlyout {
       this.CORNER_RADIUS,
     );
 
-    // Side closest to workspace.
-    path.push("v", Math.max(0, height));
+    // Right edge
+    path.push("v", Math.max(0, height - this.CORNER_RADIUS * 2));
 
-    // Rounded corner.
+    // Bottom right rounded corner
     path.push(
       "a",
       this.CORNER_RADIUS,
@@ -82,7 +110,7 @@ class FillFlyout extends VerticalFlyout {
       this.CORNER_RADIUS,
     );
 
-    // Bottom.
+    // Bottom edge
     path.push("h", -width);
 
     // z position
@@ -91,27 +119,56 @@ class FillFlyout extends VerticalFlyout {
     this.svgBackground_!.setAttribute("d", path.join(" "));
   }
 
-  /** Scroll the flyout to the top. */
   override scrollToStart() {
-    console.log(98);
     this.workspace_.scrollbar?.setY(0);
+  }
+
+  protected override wheel_(e: WheelEvent) {
+    const scrollDelta = browserEvents.getScrollDeltaPixels(e);
+
+    if (scrollDelta.y) {
+      const metricsManager = this.workspace_.getMetricsManager();
+      const scrollMetrics = metricsManager.getScrollMetrics();
+      const viewMetrics = metricsManager.getViewMetrics();
+      const pos = viewMetrics.top - scrollMetrics.top + scrollDelta.y;
+
+      this.workspace_.scrollbar?.setY(pos);
+      // When the flyout moves from a wheel event, hide WidgetDiv and
+      // dropDownDiv.
+      // WidgetDiv.hideIfOwnerIsInWorkspace(this.workspace_);
+      // Blockly.dropDownDiv.hideWithoutAnimation();
+    }
+    // Don't scroll the page.
+    e.preventDefault();
+    // Don't propagate mousewheel event (zooming).
+    e.stopPropagation();
+  }
+
+  protected override layout_(contents: FlyoutItem[]) {
+    this.workspace_.scale = this.targetWorkspace!.scale;
+    const margin = this.MARGIN;
+    const cursorX = this.RTL ? margin : margin + this.tabWidth_;
+    let cursorY = margin;
+
+    for (const item of contents) {
+      item.getElement().moveBy(cursorX, cursorY);
+      cursorY += item.getElement().getBoundingRectangle().getHeight();
+    }
   }
 
   override isDragTowardWorkspace(
     __currentDragDeltaXY: Blockly.utils.Coordinate,
   ): boolean {
-    // dTODO: Try to detect if drag is primarily up or down?
-    console.log(104);
-    return true;
+    return false;
   }
 
   override getClientRect(): Blockly.utils.Rect | null {
-    console.log(109);
     if (!this.svgGroup_ || this.autoClose || !this.isVisible()) {
+      // The bounding rectangle won't compute correctly if the flyout is closed
+      // and auto-close flyouts aren't valid drag targets (or delete areas).
       return null;
     }
 
-    // A comment
     const flyoutRect = this.svgGroup_.getBoundingClientRect();
     return new Blockly.utils.Rect(
       flyoutRect.top,
@@ -122,25 +179,15 @@ class FillFlyout extends VerticalFlyout {
   }
 
   protected override reflowInternal_() {
-    console.log(120);
     this.workspace_.scale = this.getFlyoutScale();
-    let flyoutWidth = this.getContents().reduce((maxWidthSoFar, item) => {
-      return Math.max(
-        maxWidthSoFar,
-        item.getElement().getBoundingRectangle().getWidth(),
-      );
-    }, 0);
-    flyoutWidth += this.MARGIN * 1.5 + this.tabWidth_;
-    flyoutWidth *= this.workspace_.scale;
-    flyoutWidth += Scrollbar.scrollbarThickness;
 
-    if (this.getWidth() !== flyoutWidth) {
+    if (this.getWidth() !== this.bubbleWidth) {
       if (this.RTL) {
         // With the flyoutWidth known, right-align the flyout contents.
         for (const item of this.getContents()) {
           const oldX = item.getElement().getBoundingRectangle().left;
           const newX =
-            flyoutWidth / this.workspace_.scale -
+            this.bubbleWidth / this.workspace_.scale -
             item.getElement().getBoundingRectangle().getWidth() -
             this.MARGIN -
             this.tabWidth_;
@@ -159,12 +206,13 @@ class FillFlyout extends VerticalFlyout {
         this.toolboxPosition_ === Blockly.utils.toolbox.Position.LEFT
       ) {
         this.targetWorkspace.translate(
-          this.targetWorkspace.scrollX + flyoutWidth,
+          this.targetWorkspace.scrollX + this.bubbleWidth,
           this.targetWorkspace.scrollY,
         );
       }
 
-      this.width_ = flyoutWidth;
+      this.width_ = this.bubbleWidth;
+      this.height_ = this.bubbleHeight;
       this.position();
       this.targetWorkspace.resizeContents();
       this.targetWorkspace.recordDragTargets();
@@ -173,9 +221,12 @@ class FillFlyout extends VerticalFlyout {
 }
 
 export class FlyoutBubble extends Blockly.bubbles.Bubble {
-  flyout: VerticalFlyout;
+  flyout: FillFlyout;
   svgDialog: SVGSVGElement;
   flyoutSvg: SVGElement;
+
+  private static readonly BUBBLE_WIDTH = 250;
+  private static readonly BUBBLE_HEIGHT = 300;
 
   constructor(
     flyoutDef: Blockly.utils.toolbox.FlyoutDefinition,
@@ -189,8 +240,6 @@ export class FlyoutBubble extends Blockly.bubbles.Bubble {
       {
         x: Blockly.bubbles.Bubble.BORDER_WIDTH,
         y: Blockly.bubbles.Bubble.BORDER_WIDTH,
-        width: 100,
-        height: 100,
       },
       this.contentContainer,
     );
@@ -203,7 +252,11 @@ export class FlyoutBubble extends Blockly.bubbles.Bubble {
       this.svgDialog,
     );
 
-    this.flyout = new FillFlyout(workspace.copyOptionsForFlyout());
+    this.flyout = new FillFlyout(
+      workspace.copyOptionsForFlyout(),
+      FlyoutBubble.BUBBLE_WIDTH,
+      FlyoutBubble.BUBBLE_HEIGHT,
+    );
     this.flyout.autoClose = false;
 
     // Create the flyout's SVG before passing it to the bubble constructor.
@@ -226,13 +279,13 @@ export class FlyoutBubble extends Blockly.bubbles.Bubble {
     this.flyout.position();
     this.flyout.reflow();
 
-    const flyoutWidth = 100;
-    const flyoutHeight = 100;
-
     // Add a bit of padding to the bubble.
     const padding = 10;
     this.setSize(
-      new Blockly.utils.Size(flyoutWidth + padding, flyoutHeight + padding),
+      new Blockly.utils.Size(
+        FlyoutBubble.BUBBLE_WIDTH + padding,
+        FlyoutBubble.BUBBLE_HEIGHT + padding,
+      ),
     );
   }
 
@@ -387,7 +440,7 @@ export class FlyoutIcon extends Blockly.icons.Icon implements IHasBubble {
 
   /**
    * @returns the location the bubble should be anchored to.
-   *     I.E. the middle of this icon.
+   * I.E. the middle of this icon.
    */
   private getAnchorLocation(): Blockly.utils.Coordinate {
     const midIcon = ICON_SIZE / 2;
@@ -399,7 +452,7 @@ export class FlyoutIcon extends Blockly.icons.Icon implements IHasBubble {
 
   /**
    * @returns the rect the bubble should avoid overlapping.
-   *     I.E. the block that owns this icon.
+   * I.E. the block that owns this icon.
    */
   private getBubbleOwnerRect(): Blockly.utils.Rect {
     const bbox = (this.sourceBlock as BlockSvg).getSvgRoot().getBBox();
