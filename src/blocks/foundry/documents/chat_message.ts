@@ -41,6 +41,95 @@ const EXTENDS_DOCUMENT_BLOCK = {
   categories: ["chat"] as (keyof ToolboxCategoryNames)[],
 };
 
+//***************************************************************************//
+
+/**
+ * Additional value types for chat messages.
+ */
+declare module "../../../plans/block_plan" {
+  export interface ValueTypes {
+    ChatMessage_Schema: "";
+  }
+}
+
+/**
+ * A block representing the ChatMessage schema.
+ */
+export const CHAT_MESSAGE_SCHEMA_BLOCK = new BlockPlan({
+  name: "chat_message_schema",
+  kind: "value",
+  output: "ChatMessage_Schema",
+  categories: ["chat"] as (keyof ToolboxCategoryNames)[],
+  inputs: [
+    {
+      name: "_id",
+      accepts: ["String"],
+    },
+    {
+      name: "author",
+      accepts: ["User"],
+    },
+    {
+      name: "content",
+      accepts: ["String"],
+    },
+    {
+      name: "timestamp",
+      accepts: ["Number"],
+    },
+    {
+      name: "flavor",
+      accepts: ["String"],
+    },
+    {
+      name: "speaker",
+      accepts: ["Object"],
+    },
+    {
+      name: "whisper",
+      accepts: ["Array_User"],
+    },
+    {
+      name: "blind",
+      accepts: ["Boolean"],
+    },
+    {
+      name: "rolls",
+      accepts: ["Array_Roll"],
+    },
+    {
+      name: "style",
+      accepts: ["String"],
+    },
+    {
+      name: "flags",
+      accepts: ["Object"],
+    },
+    {
+      name: "_stats",
+      accepts: ["Object"],
+    },
+  ],
+  toCode: valueCode(
+    `{
+      _id: {{_id}},
+      author: {{author}},
+      content: {{content}},
+      timestamp: {{timestamp}},
+      flavor: {{flavor}},
+      speaker: {{speaker}},
+      whisper: {{whisper}},
+      blind: {{blind}},
+      rolls: {{rolls}},
+      style: {{style}},
+      flags: {{flags}},
+      _stats: {{_stats}}
+    }`,
+  ),
+});
+
+//***************************************************************************//
+
 /**
  * Create a new Chat Message.
  */

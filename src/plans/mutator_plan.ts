@@ -1,22 +1,22 @@
 import { Workspace } from "blockly/core";
 import { PlannedBlock } from "./block_plan";
 
-type SourceBlock = PlannedBlock;
-type MutatorBlock = PlannedBlock;
+export type SourceBlock = PlannedBlock;
+export type MutatorBlock = PlannedBlock;
 
 export interface MutatorPlanData {
   toolbox?: string[];
-  onMutatorCreate: (this: MutatorBlock, workspace: Workspace) => void;
-  onMutatorUpdate: (this: MutatorBlock, workspace: Workspace) => void;
-  onSourceBlockUpdate?: (this: SourceBlock, workspace: Workspace) => void;
+  onMutatorCreate: (this: SourceBlock, mutatorWorkspace: Workspace) => void;
+  onMutatorUpdate: (this: SourceBlock, mutatorRoot: MutatorBlock) => void;
+  onSourceBlockUpdate?: (this: SourceBlock, mutatorRoot: MutatorBlock) => void;
 }
 
 export class MutatorPlan {
   toolbox?: string[];
-  onMutatorCreate: (this: MutatorBlock, workspace: Workspace) => void;
-  onMutatorUpdate: (this: MutatorBlock, workspace: Workspace) => void;
+  onMutatorCreate: (this: SourceBlock, mutatorWorkspace: Workspace) => void;
+  onMutatorUpdate: (this: SourceBlock, mutatorRoot: MutatorBlock) => void;
   onSourceBlockUpdate:
-    | ((this: SourceBlock, workspace: Workspace) => void)
+    | ((this: SourceBlock, mutatorRoot: MutatorBlock) => void)
     | null;
 
   constructor(data: MutatorPlanData) {

@@ -23,7 +23,7 @@ declare module "../../plans/block_plan" {
  */
 declare module "../../toolbox" {
   export interface ToolboxCategoryNames {
-    filter?: never;
+    filter: "filter";
   }
 }
 

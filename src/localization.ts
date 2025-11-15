@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error This is a YAML file.
 import messages from "./messages.yaml";
 
 /**

@@ -38,12 +38,10 @@ export class FillFlyout extends Flyout {
     const viewMetrics = metricsManager.getViewMetrics();
     const absoluteMetrics = metricsManager.getAbsoluteMetrics();
 
-    if (typeof xyRatio.y === "number") {
-      this.workspace_.scrollY = -(
-        scrollMetrics.top +
-        (scrollMetrics.height - viewMetrics.height) * xyRatio.y
-      );
-    }
+    this.workspace_.scrollY = -(
+      scrollMetrics.top +
+      (scrollMetrics.height - viewMetrics.height) * xyRatio.y
+    );
     this.workspace_.translate(
       this.workspace_.scrollX + absoluteMetrics.left,
       this.workspace_.scrollY + absoluteMetrics.top,

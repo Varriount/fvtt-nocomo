@@ -22,6 +22,7 @@ import * as builtins from "./fields/builtins";
 import { registerBuiltinInputs } from "./inputs/builtins";
 import { toolbox } from "./toolbox";
 import * as Workspace from "./workspace";
+import * as actor from "./blocks/foundry/documents/actor";
 import "./blocks/other/other";
 
 // Get our target UI elements.
@@ -56,6 +57,9 @@ function globalSetup() {
   modifiers.registerBlocks();
   rolls.registerBlocks();
   terms.registerBlocks();
+
+  // Register documents.
+  actor.registerBlocks();
 }
 
 const workspace = Workspace.createBlocklyWorkspace(BLOCKLY_DIV);

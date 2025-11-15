@@ -41,8 +41,8 @@ export default tslint.config([
       "@typescript-eslint/no-this-alias": "off",
       "@typescript-eslint/no-unsafe-function-type": "off",
       "@typescript-eslint/no-unused-vars": [
-        "",
-        { varsIgnorePattern: "__.+", argsIgnorePattern: "__.+" },
+        "warn",
+        { varsIgnorePattern: "(__.+)|(^_$)", argsIgnorePattern: "__.+" },
       ],
     },
   },

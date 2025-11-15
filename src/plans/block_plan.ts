@@ -1,3 +1,4 @@
+import * as Blockly from "blockly/core";
 import {
   Block,
   Blocks,
@@ -128,12 +129,12 @@ export type BlockPlanData = {
   /**
    * A hook for serializing extra state for this block.
    */
-  saveExtraData?: (this: Block) => any;
+  saveExtraState?: (this: Block) => any;
 
   /**
    * A hook for deserializing extra state for this block.
    */
-  loadExtraData?: (this: Block, data: any) => void;
+  loadExtraState?: (this: Block, data: any) => void;
 
   /**
    * A hook for reconfiguring a block when its mutator changes.
@@ -150,6 +151,8 @@ export type BlockPlanData = {
    * the `compose` hook can reassociated old inputs.
    */
   saveConnections?: (this: Block) => void;
+
+  extra?: Record<string, unknown>;
 
   // Temporary fields
   colour?: number;
@@ -195,6 +198,7 @@ export class BlockPlan {
   message: string | null;
   tooltip: string | null;
   helpURL: string | null;
+  extra: Record<string, unknown>;
 
   constructor(data: BlockPlanData) {
     this.name = data.name;
@@ -218,6 +222,8 @@ export class BlockPlan {
     if (data.mutator) {
       this.mutator = new MutatorPlan(data.mutator);
     }
+    this.saveExtraState = data.saveExtraState;
+    this.loadExtraState = data.loadExtraState;
 
     // Create proper maps from the field and input lists.
     this.inputs = new Map();
@@ -233,24 +239,37 @@ export class BlockPlan {
         this.fields.set(fieldData.name, new FieldPlan(fieldData));
       }
     }
+
+    this.extra = data.extra ?? {};
   }
 
   defineBlock() {
     // Define the block definition used when creating new `Block` instances.
     const blockPlan = this;
     const mutatorPlan = this.mutator;
+    const mutatorName = undefined;
+
     Blocks[this.name] = {
       init(this: Block) {
         blockPlan.initializeBlock(this as PlannedBlock);
+        if (mutatorPlan != null) {
+          this.addIcon(
+            new Blockly.icons.MutatorIcon(
+              mutatorPlan.toolbox || [],
+              this as Blockly.BlockSvg,
+            ),
+          );
+        }
       },
       generator: blockPlan.toCode,
       destroy: blockPlan.onDestroy,
       onchange: blockPlan.onWorkspaceUpdate,
-      saveExtraState: blockPlan.saveExtraState,
-      loadExtraState: blockPlan.loadExtraState,
       saveConnections: mutatorPlan?.onSourceBlockUpdate,
       compose: mutatorPlan?.onMutatorUpdate,
       decompose: mutatorPlan?.onMutatorCreate,
+      saveExtraState: blockPlan.saveExtraState,
+      loadExtraState: blockPlan.loadExtraState,
+      ...blockPlan.extra,
     };
 
     // Define the code generator used for the new `Block` instances.
